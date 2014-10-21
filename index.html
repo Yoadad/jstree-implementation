@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>jstree</title>
+		<script type="text/javascript" src="js/jquery-1.9.1.min.js"></script>
+		<script type="text/javascript" src="js/jquery-ui-1.10.2.custom.js"></script>
+		<script type="text/javascript" src="js/jquery.jstree.js"></script>
+		<script type="text/javascript" src="js/json2.js"></script>
+	</head>
+	<body>
+		
+		<h1>
+				jstree
+		</h1>
+		
+		<div id="main">
+			<div id="tree">
+
+			</div>
+		
+		</div>
+		
+		<div id="footer">
+			<div id="properties">
+				
+			</div>
+			
+			<input type="button" value="Add node" id="btnAdd"/>
+			<input type="button" value="Remove node" id="btnRemove"/>
+			<input type="button" value="Rename node" id="btnRename"/><input type="text" id="txtNodeName"/>
+			<input type="button" value="Expand node" id="btnExpand"/>
+			<input type="button" value="Collapse node" id="btnCollapse"/>
+			<input type="button" value="Select root" id="btnSelectRoot">
+			<input type="button" value="Refresh" id="btnRefreshNode">
+			<input type="button" value="Refresh tree" id="btnRefreshTree">
+			
+			
+		</div>
+		
+		<script type="text/javascript">
+			
+			var PositionAdministration = PositionAdministration || {};
+			
+			(function($,PositionAdministration){
+				PositionAdministration.Selected$Node;
+				PositionAdministration.SelectedNode;
+				PositionAdministration.Nodes = {
+					ROOT: { 
+						type: "ROOT"
+						, level: 0
+						, icon: 'img/position_s.png'
+						, url: ''
+					}				
+					,CLASSIFIER: { 
+						type: "CLASSIFIER"
+						, level: 0
+						, icon: 'img/ClassifierIcon.gif'
+						, url: 'PositionAdminAjaxResponses/PositionAdminPosition.aspx' 
+					}
+					, SUBCLASSIFIER: { 
+						type: "SUBCLASSIFIER"
+						, level: 0
+						, icon: 'img/ClassifierIcon.gif'
+						, url: 'PositionAdminAjaxResponses/PositionAdminPosition.aspx' 
+					}
+					, POS: { 
+						type: "POS"
+						, level: 1
+						, icon: 'img/position_s.png'
+						, url: 'PositionAdminAjaxResponses/PositionAdminPosition.aspx' 
+					}
+					, MAP: { 
+						type: "MAP"
+						, level: 2
+						, icon: 'img/map_s.png'
+						, url: 'PositionAdminAjaxResponses/PositionAdminMap.aspx' 
+					}
+					, SKILLGROUP: { 
+						type: "SKILLGROUP"
+						, level: 3
+						, icon: 'img/Skill_group_16.png'
+						, url: 'PositionAdminAjaxResponses/PositionAdminSkillGroup.aspx' 
+					}
+					, SKILL: { 
+						type: "SKILL"
+						, level: 4
+						, icon: 'img/skill_16.png'
+						, url: 'PositionAdminAjaxResponses/PositionAdminSkill.aspx' 
+					}
+					, SKILLDESCRIPTION: { 
+						type: "SKILLDESCRIPTION"
+						, level: 5
+						, icon: 'img/skill_description_16.png'
+						, url: 'PositionAdminAjaxResponses/PositionAdminSkillDescription.aspx' 
+					}
+					,TASK:{
+						type: "TASK"
+						, level: 6
+						, icon: 'img/tick.png'
+						, url: 'PositionAdminAjaxResponses/PositionAdminTask.aspx' 						
+					}
+				};
+				
+				PositionAdministration.Types = ['ROOT','CLASSIFIER','SUBCLASSIFIER','POS','MAP','SKILLGROUP','SKILL','SKILLDESCRIPTION','TASK'];
+				
+				$("#tree").jstree({ 
+					"json_data" : {
+						"data":[
+							{
+								"data":{"title":"Positions"}
+								,"icon":"img/position_s.png"
+								,"children":[]
+								,"state":"open"
+								,"attr":{"nodeid":"1", "id":"tree_ROOT_1", "type":"ROOT" ,"parentid":"tree__0","title":"Positions","contextmenu":"RootMenu ","typeid":"0"}
+							}
+						]
+						,"ajax" : {
+							"url" : "responseTree.php",
+							"data" : function (n) { 
+								return { 
+										id : n.attr ? n.attr("id").split('_')[2] : 1
+										,type: n.attr ? n.attr('type') : 'ROOT'
+										,tree:'tree'
+								}; 
+							}
+						}
+					}
+					,"ui" : {"select_limit" : 1}
+					,"crrm": {
+                        "move": {
+                            "check_move": function (m) {
+                                var nodeSource = m.o;
+                                var nodeDestination = m.np;
+								
+								
+								
+								return PositionAdministration.MoveNode(nodeSource, nodeDestination,m);
+                            }
+                        }
+                    }
+                    ,"dnd": {
+                        "drop_target": false,
+                        "drag_target": false
+                    }
+					,"plugins" : [ "themes", "json_data", "ui","crrm" ,"dnd"]
+				}).bind('select_node.jstree',function(e,data){
+					var $selectedNode = data.rslt.obj;
+					PositionAdministration.Selected$Node = $selectedNode;
+					PositionAdministration.SelectedNode = PositionAdministration.Convert$NodeToTreeNode($selectedNode);
+					PositionAdministration.RenderNodeProperties(PositionAdministration.Selected$Node);
+				}).bind('loaded.jstree',function(e,data){
+					PositionAdministration.RefreshTree();
+				});
+				
+				
+				PositionAdministration.RenderNodeProperties = function(){
+					
+					$('#properties').html('<p><span>Id: </span><span>'+PositionAdministration.SelectedNode.attr.id+'</span></p>');
+					$('#properties').append('<p><span>Parent Id: </span><span>'+PositionAdministration.SelectedNode.attr.parentid+'</span></p>');
+					$('#properties').append('<p><span>Type: </span><span>'+PositionAdministration.SelectedNode.attr.type+'</span></p>');
+					$('#properties').append('<p><span>Title: </span><span>'+PositionAdministration.SelectedNode.title+'</span></p>');
+					$('#properties').append('<p><span>Full path: </span><span>' + PositionAdministration.GetFullPathId(PositionAdministration.Selected$Node) + '</span></p>');
+					$('#txtNodeName').val($.trim(PositionAdministration.SelectedNode.title));
+				};
+				
+				PositionAdministration.GetFullPathId = function ($node, partial) {
+					partial = typeof partial == 'undefined' ? '' : ','+partial;
+					partial = $node.attr('type') + ':' + $node.attr('typeid') + partial;
+					if ($node.attr('type') == 'ROOT') {
+						return partial;
+					}
+					var $parent = $('#' + $node.attr('parentid'));
+					return PositionAdministration.GetFullPathId($parent, partial);
+				};				
+								
+				PositionAdministration.Convert$NodeToTreeNode = function($node){
+					var title = $node.attr('title');
+					var type = $node.attr('type');
+					var nodeid = $node.attr('nodeid');
+					return {
+							title: title
+							,icon: PositionAdministration.Nodes[type].icon
+							,state: null
+							,attr: {id: $node.attr('id'), type: type, parentid:$node.attr('parentid'), titile: title, contextmenuid: $node.attr('contextmenuid')}
+							,children: null
+					};
+				};
+				
+				PositionAdministration.MoveNode = function(nodeSource,nodeDestination,m){
+								
+					var typeSource = nodeSource.attr('type');
+					var typeDestination = nodeDestination.attr('type');
+					var destinationId = nodeDestination.attr('id');
+					var parentid = nodeSource.attr('parentid');
+
+					if ((typeSource == "SUBCLASSIFIER" && typeDestination == "CLASSIFIER")
+						|| (typeSource == "POS" && typeDestination == "SUBCLASSIFIER")){
+						
+						nodeSource.attr({"parentid":destinationId});
+												
+						console.log(m.o.attr('type')
+							+ ', ' + m.np.attr('type')
+							+ ', ' + m.r.attr('type')
+							//+ ', ' + m.cp.attr('type')
+							//+ ', ' + m.cr.attr('type')
+						);
+						
+						return true;
+					}
+					else if(typeSource == "MAP" && typeDestination == "POS" && parentid == destinationId){
+						return true;
+					}
+						
+					return false;
+				};
+				
+				PositionAdministration.GetNewNode = function(tree,nodeid,title,type,parentid,icon,state,hasChildren){
+					var id = tree + '_' + type + '_' + nodeid;
+					return  {
+						data:{
+							title: title
+						}
+						,icon:  icon
+						,state:  state
+						,attr: {
+								nodeid: nodeid
+								,id: id
+								,type: type
+								,parentid:parentid
+								,titile:title
+						}
+						,children: hasChildren ? [] : null
+					};
+				};	
+				
+				PositionAdministration.CreateChildNode = function($node){
+					
+					var parentId = $node.attr('id');
+					var parentType  = $node.attr('type');
+					var parentNodeId = $node.attr('nodeid');
+					var nodeid = parentNodeId + ($node.find('>ul>li').size()  + 1);
+					var idxType =	$.inArray(parentType, PositionAdministration.Types);
+					
+					if(idxType >= 0 && idxType < PositionAdministration.Types.length - 1){
+						
+						var type = PositionAdministration.Types[idxType + 1];
+						var hasChildren = type != 'TASK';
+						var state = type != 'TASK' ? 'closed': null
+						var newNode = PositionAdministration.GetNewNode(
+							'tree'
+							,nodeid
+							,type + ' ' + nodeid
+							,type
+							,parentId
+							,PositionAdministration.Nodes[type].icon
+							,state
+							,hasChildren
+						);
+						
+						$("#tree").jstree("create_node", $node, "inside", newNode, true, true);
+					}
+					
+					
+
+				};
+				
+				PositionAdministration.RefreshNode = function ($node) {
+					$('#tree').jstree('refresh',$node);
+				};
+				
+				PositionAdministration.RefreshTree = function ($node) {
+					PositionAdministration.SelectNode($('#tree_ROOT_1'));
+					PositionAdministration.RefreshNode(PositionAdministration.Selected$Node);
+					
+				}
+
+				PositionAdministration.RemoveNode = function($node){
+					$("#tree").jstree("remove", $node);				
+				};
+				
+				PositionAdministration.ExpandNode = function($node){
+					$("#tree").jstree("open_node", $node);
+				};
+				
+				PositionAdministration.CollapseNode = function($node){
+					$("#tree").jstree("close_node", $node);
+				};
+				
+				
+				
+				PositionAdministration.RenameNode = function($node, newName){
+					$("#tree").jstree("rename_node", $node, newName);				
+				};
+				
+				PositionAdministration.SelectNode = function($node){
+					$('#tree').jstree('deselect_all');
+					$("#tree").jstree("select_node", $node);
+				};
+				
+				$('#btnAdd').click(function(){
+
+					PositionAdministration.CreateChildNode(PositionAdministration.Selected$Node);
+				});
+				
+				$('#btnRemove').click(function(){
+					PositionAdministration.RemoveNode(PositionAdministration.Selected$Node);
+				});
+				
+				$('#btnRename').click(function(){
+					PositionAdministration.RenameNode(PositionAdministration.Selected$Node,$('#txtNodeName').val());
+				});
+				
+				
+				$('#btnRefreshNode').click(function(){
+					PositionAdministration.RefreshNode(PositionAdministration.Selected$Node);
+				});
+				
+				$('#btnSelectRoot').click(function(){
+					PositionAdministration.SelectNode($('#tree_ROOT_1'));
+				});
+				
+				$('#btnRefreshTree').click(function(){
+					PositionAdministration.RefreshTree();
+				});
+				
+				$('#btnExpand').click(function(){
+					PositionAdministration.ExpandNode(PositionAdministration.Selected$Node);
+				});
+				
+				$('#btnCollapse').click(function(){
+					PositionAdministration.CollapseNode(PositionAdministration.Selected$Node);
+				});
+				
+				
+			}(jQuery,PositionAdministration));
+			
+		</script>
+	
+	</body>
+</html>
